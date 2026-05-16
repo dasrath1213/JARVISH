@@ -1,0 +1,5 @@
+• Extracted, cleaned, and loaded production retail data into BigQuery with unit testing and data quality checks.
+• Securely transferred curated datasets from GCP to AWS using IAM Anywhere role in required file formats for cross-cloud consumption.
+Skills
+Cloud & Data Engineering: GCP (Dataflow, BigQuery , BigQuery ML, GCS, Cloud Composer, Pub/Sub, IAM), Apache Airflow,
+Data Lakes, REST API, Fas
