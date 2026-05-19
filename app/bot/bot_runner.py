@@ -1,15 +1,13 @@
 import random
 from playwright.async_api import async_playwright
-from app.utils.human import human_delay, human_typing, human_mouse_move
-from app.bot.handle_questions import handle_questionnaire
-import re
+from app.utils.human import human_delay
 from langchain_groq import ChatGroq
 from app.bot.handle_login import handleLogin
 from app.bot.open_job_page import openJobPage
 from app.bot.select_jobs import selectJobInBulk
 from app.bot.apply_to_jobs import applyInBulk
 
-async def run_bot(llm:ChatGroq, resume:str, system_prompt:str, human_prompt:str):
+async def run_bot(llm:ChatGroq, system_prompt:str, human_prompt:str, vector_store):
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=False,
@@ -40,6 +38,7 @@ async def run_bot(llm:ChatGroq, resume:str, system_prompt:str, human_prompt:str)
                     'div.tab-list-item:has-text("Applies")',
                 ]
                 
+                count_jobs_selected = 0
                 for tab_locator in tabs_to_check:
                     if tab_locator:
                         print(f"🤖 JARVIS: Checking tab {tab_locator}...")
@@ -49,26 +48,29 @@ async def run_bot(llm:ChatGroq, resume:str, system_prompt:str, human_prompt:str)
                                 await tab.click()
                                 await human_delay(2, 4)
                             else:
-                                print("🤖 JARVIS: 'You might like' tab not visible.")
+                                print(f"🤖 JARVIS: Tab not visible: {tab_locator}")
                                 continue
                         except Exception as e:
                             print(f"🤖 JARVIS: Could not click tab: {e}")
                             continue
 
-                    # BATCH SELECTION
-                    count_jobs_selected = await selectJobInBulk(page)
+                        # BATCH SELECTION
+                        count_jobs_selected = await selectJobInBulk(page)
 
-                    if count_jobs_selected > 0:
-                        await applyInBulk(page, llm, resume, system_prompt, human_prompt)
-                        total_jobs_applied += count_jobs_selected
-
-                        break
-                    else:
-                        print(f"🤖 JARVIS: No unapplied jobs found on current tab.")
-                
-                    if count_jobs_selected == 0:
-                        print("🤖 JARVIS: No unapplied jobs found on this tab. Checking another tab...")
-                        await human_delay(1, 2)
+                        if count_jobs_selected > 0:
+                            await applyInBulk(page, llm, system_prompt, human_prompt, vector_store)
+                            total_jobs_applied += count_jobs_selected
+                        
+                            
+                        else:
+                            print(f"🤖 JARVIS: No unapplied jobs found on current tab.")
+                    
+                        if total_jobs_applied >= threshold:
+                            print(f"🤖 JARVIS: Applied to {total_jobs_applied} jobs. Threshold of {threshold} reached. Stopping bot.")
+                            break
+                if count_jobs_selected == 0:
+                    print("🤖 JARVIS: No unapplied jobs found on any tab. Checking another tab...")
+                    await human_delay(1, 2)
 
                 if total_jobs_applied >= threshold:
                     print(f"🤖 JARVIS: Applied to {total_jobs_applied} jobs. Threshold of {threshold} reached. Stopping bot.")

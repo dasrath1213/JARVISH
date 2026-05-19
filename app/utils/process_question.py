@@ -1,4 +1,3 @@
-import re
 
 def normalize(text):
     text = text.lower()

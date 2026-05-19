@@ -1,34 +1,36 @@
 import asyncio
 from app.ai.llm import init_llm
-from app.utils.file_loader import get_resume, get_system_prompt, get_human_prompt
+from app.ai.rag.create_vector_db import create_vector_db
+from app.ai.rag.document_loader import document_loader
+from app.ai.rag.vector_embedding import vector_embedding
+from app.utils.file_loader import get_system_prompt, get_human_prompt
 from app.bot.bot_runner import run_bot
-import os
-import json
 
 
 async def main():
-    if not os.path.exists('data/db.json'):
-        with open('data/db.json', 'w') as f:
-            json.dump([], f)
+    print("🤖 JARVIS: Initializing Systems...")
+
+    vector_store=create_vector_db()
+    document=document_loader("data/resume.pdf")
+    if vector_store and document:
+        vector_embedding(vector_store, document)
+    else:
+        print("⚠️ JARVIS: Issue initializing vector store or document.")
+
     llm = init_llm()
-    resume = get_resume()
     system_prompt = get_system_prompt()
     human_prompt = get_human_prompt()
     
 
-    if llm == None:
+    if llm is None:
         print("❌ JARVIS: AI Initialization Failed.")
         return
     
-    if resume == None:
-        print("❌ JARVIS: Resume Not Found.")
-        return
-    
-    if system_prompt == None or human_prompt == None:
+    if system_prompt is None or human_prompt is None:
         print("❌ JARVIS: Prompts Not Found.")
         return
 
-    await run_bot(llm, resume, system_prompt, human_prompt)
+    await run_bot(llm, system_prompt, human_prompt, vector_store)
 
 
 if __name__ == "__main__":
